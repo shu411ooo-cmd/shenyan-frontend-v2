@@ -1,0 +1,566 @@
+/* ============================================================
+   Angel's Diary — Design Language v2
+   一本藏在欧洲旧花园与石膏回廊里的数字日记
+   ============================================================ */
+
+:root {
+  /* Palette — 低饱和、同温层、哑光 */
+  --ivory: #F7F2E9;
+  --warm-white: #FBF8F1;
+  --oatmeal: #E9E0CF;
+  --paper-edge: #E0D5BF;
+  --ink: #4A4238;
+  --ink-soft: #8A7E6E;
+  --sage: #9AA88C;
+  --sage-deep: #7C8A6D;
+  --rose: #C9A0A4;
+  --rose-deep: #B98A8E;
+  --wax: #A85751;
+  --wax-dark: #8E4440;
+  --wax-light: #E7C3BC;
+  --paper-shadow: 0 6px 20px rgba(90, 78, 60, 0.10);
+  --paper-shadow-lift: 0 10px 28px rgba(90, 78, 60, 0.13);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Type */
+  --serif-en: "Playfair Display", "Noto Serif SC", serif;
+  --serif-body: "Noto Serif SC", "Songti SC", serif;
+  --hand-en: "Pinyon Script", cursive;
+  --hand-cn: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; }
+
+body {
+  background: #EFE9DC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif-body);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+/* ---------- Phone frame（桌面预览时呈现为设备；移动端全屏） ---------- */
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  max-height: 100vh;
+  background: var(--ivory);
+  overflow: hidden;
+}
+@media (min-width: 480px) and (min-height: 900px) {
+  .phone {
+    border-radius: 44px;
+    box-shadow:
+      0 0 0 10px #3d3830,
+      0 0 0 12px #5a5348,
+      0 40px 90px rgba(60, 50, 35, 0.35);
+  }
+}
+@media (max-width: 430px) {
+  .phone { width: 100vw; height: 100dvh; }
+}
+
+/* 纸张噪点 —— 极轻，像旧纸但不脏 */
+.phone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.50 0 0 0 0 0.42 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 午后光 —— 一束很轻的斜光 */
+.phone::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(115deg, rgba(255, 251, 240, 0.5) 0%, rgba(255, 251, 240, 0) 38%);
+}
+
+/* ============================================================
+   OPENING —— 开机序列
+   ============================================================ */
+#opening {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--ivory);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 600ms var(--ease-out);
+}
+#opening.gone { opacity: 0; pointer-events: none; }
+
+.opening-stage {
+  position: relative;
+  width: 320px;
+  height: 400px;
+}
+
+/* 天使浮雕 medallion */
+#angelMedallion {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 1400ms var(--ease-out), transform 1400ms var(--ease-out);
+  filter: drop-shadow(0 14px 30px rgba(90, 78, 60, 0.16));
+}
+#opening.phase-angel #angelMedallion { opacity: 1; transform: scale(1); }
+
+/* 穗子 halo */
+#haloSvg { position: absolute; inset: 0; overflow: visible; }
+#haloSvg .stem {
+  opacity: 0;
+  transform: scale(0.6);
+  transform-origin: center;
+  transform-box: fill-box;
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+#opening.phase-halo #haloSvg .stem { opacity: var(--o, 0.8); transform: scale(1); }
+
+/* 火漆印 */
+#waxSeal {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 96px;
+  height: 96px;
+  margin-left: -48px;
+  opacity: 0;
+  transform: scale(1.18);
+  transition: opacity 350ms var(--ease-out), transform 350ms var(--ease-out);
+  filter: drop-shadow(0 8px 14px rgba(142, 68, 64, 0.35));
+  z-index: 4;
+}
+#opening.phase-seal #waxSeal { opacity: 1; transform: scale(1); }
+
+/* 标题 */
+.opening-title {
+  margin-top: 34px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+#opening.phase-title .opening-title { opacity: 1; transform: translateY(0); }
+.opening-title h1 {
+  font-family: var(--serif-en);
+  font-weight: 500;
+  font-size: 30px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.opening-title .rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px 0 10px;
+  color: var(--ink-soft);
+}
+.opening-title .rule::before,
+.opening-title .rule::after {
+  content: "";
+  width: 46px;
+  height: 1px;
+  background: var(--paper-edge);
+}
+.opening-title p {
+  font-family: var(--serif-en);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  color: var(--ink-soft);
+}
+
+.opening-skip {
+  position: absolute;
+  bottom: 34px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+
+/* ============================================================
+   HOME —— 日记主页
+   ============================================================ */
+#home {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 26px 20px 108px;
+}
+#home::-webkit-scrollbar { display: none; }
+
+/* 元素进入 —— opacity + translateY 8px */
+.reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+
+/* ---------- 页眉 ---------- */
+.home-head { text-align: center; margin-bottom: 22px; }
+.home-date {
+  font-family: var(--serif-en);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.home-date::before, .home-date::after {
+  content: "";
+  width: 34px;
+  height: 1px;
+  background: var(--paper-edge);
+}
+.home-greeting {
+  font-family: var(--serif-en);
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-top: 14px;
+  color: var(--ink);
+}
+.home-greeting .cn {
+  display: block;
+  font-family: var(--serif-body);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Today 主纸卡 ---------- */
+.paper-card {
+  position: relative;
+  background: var(--warm-white);
+  border: 1px solid var(--paper-edge);
+  border-radius: 16px;
+  box-shadow: var(--paper-shadow);
+}
+.today-card { padding: 22px 22px 20px; }
+.card-label {
+  font-family: var(--serif-en);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--sage-deep);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-label::after { content: ""; flex: 1; height: 1px; background: var(--paper-edge); }
+.today-line {
+  font-family: var(--serif-en);
+  font-size: 16.5px;
+  line-height: 1.65;
+  margin-top: 14px;
+  max-width: 76%;
+  color: var(--ink);
+}
+.today-note {
+  font-family: var(--hand-cn);
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+.today-sign {
+  font-family: var(--hand-en);
+  font-size: 21px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+/* 小天使浮雕 —— 同色浅浮雕，靠内外光影表现 */
+.relief {
+  position: absolute;
+  right: 18px;
+  top: 46px;
+  width: 64px;
+  height: 80px;
+  border-radius: 50% / 44%;
+  background: linear-gradient(160deg, #FDFBF5, #EFE7D8);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 6px rgba(120, 105, 80, 0.12),
+    0 3px 8px rgba(90, 78, 60, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.relief svg { width: 44px; height: 58px; opacity: 0.85; }
+/* 火漆小印 */
+.wax-mini {
+  position: absolute;
+  left: 16px;
+  bottom: -14px;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 4px 8px rgba(142, 68, 64, 0.32));
+  transform: rotate(-8deg);
+}
+
+/* ---------- 天气 & 心情 ---------- */
+.duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 26px;
+}
+.duo .paper-card { padding: 16px 16px 14px; border-radius: 14px; }
+.duo-label {
+  font-family: var(--serif-en);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.duo-label svg { width: 15px; height: 15px; stroke: var(--sage-deep); }
+.duo-value {
+  font-family: var(--serif-en);
+  font-size: 22px;
+  font-weight: 500;
+  margin-top: 10px;
+  color: var(--ink);
+}
+.duo-sub {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.sage-dot { color: var(--sage-deep); }
+/* 心情花瓣点 */
+.mood-petals { display: flex; gap: 5px; margin-top: 10px; }
+.mood-petals i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--paper-edge);
+}
+.mood-petals i.on { background: var(--sage); }
+
+/* ---------- 三个入口 ---------- */
+.entries {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 26px;
+}
+.entry {
+  background: var(--warm-white);
+  border: 1px solid var(--paper-edge);
+  border-radius: 14px;
+  box-shadow: var(--paper-shadow);
+  padding: 16px 8px 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 120ms var(--ease-out), box-shadow 300ms var(--ease-out);
+}
+.entry:active { transform: scale(0.96); }
+.entry svg { width: 26px; height: 26px; stroke: var(--ink); opacity: 0.8; }
+.entry .en {
+  font-family: var(--serif-en);
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-top: 9px;
+  letter-spacing: 0.03em;
+}
+.entry .cn { font-size: 10.5px; color: var(--ink-soft); margin-top: 3px; }
+
+/* ---------- 撕纸便签条 ---------- */
+.torn {
+  position: relative;
+  margin-top: 30px;
+  background: var(--warm-white);
+  padding: 20px 22px 18px;
+  filter: drop-shadow(0 5px 12px rgba(90, 78, 60, 0.10));
+  clip-path: polygon(0 6%, 4% 2%, 9% 5%, 15% 1%, 22% 5%, 30% 2%, 38% 6%, 46% 2%, 55% 5%, 63% 1%, 71% 5%, 79% 2%, 87% 6%, 94% 2%, 100% 5%, 100% 94%, 95% 98%, 88% 95%, 80% 99%, 72% 95%, 64% 98%, 55% 94%, 46% 98%, 38% 95%, 29% 99%, 21% 95%, 13% 98%, 6% 94%, 0 97%);
+}
+.torn-quote {
+  font-family: var(--hand-cn);
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--ink);
+  max-width: 68%;
+}
+.torn-sub {
+  font-family: var(--serif-en);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+  margin-top: 10px;
+}
+/* 邮票 */
+.stamp {
+  position: absolute;
+  right: 20px;
+  top: 14px;
+  width: 52px;
+  padding: 4px;
+  background: var(--warm-white);
+  border: 1.5px dashed var(--paper-edge);
+  transform: rotate(7deg);
+  box-shadow: 0 3px 8px rgba(90, 78, 60, 0.12);
+}
+.stamp-inner {
+  border: 1px solid var(--paper-edge);
+  background: linear-gradient(150deg, #F4EDDD, #EDE3CE);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stamp-inner svg { width: 30px; height: 38px; }
+.stamp-price {
+  text-align: right;
+  font-family: var(--serif-en);
+  font-size: 9px;
+  color: var(--ink-soft);
+  padding: 2px 2px 0;
+}
+/* 邮戳 */
+.postmark {
+  position: absolute;
+  right: 56px;
+  top: 30px;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 50%;
+  opacity: 0.4;
+  transform: rotate(-14deg);
+}
+.postmark::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+}
+.postmark span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif-en);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+/* 压花 */
+.pressed-flower {
+  position: absolute;
+  left: 18px;
+  bottom: -6px;
+  width: 40px;
+  height: 52px;
+  opacity: 0.75;
+  transform: rotate(-6deg);
+}
+
+/* ---------- 页脚句 ---------- */
+.home-foot {
+  margin-top: 30px;
+  text-align: center;
+  font-family: var(--serif-en);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+.home-foot .bird { display: block; margin: 10px auto 0; width: 26px; opacity: 0.55; }
+
+/* ---------- 底部导航 ---------- */
+.tabbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  height: 86px;
+  padding: 10px 14px 22px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: linear-gradient(to top, var(--ivory) 72%, rgba(247, 242, 233, 0));
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: transform 120ms var(--ease-out), color 300ms var(--ease-out);
+}
+.tab:active { transform: scale(0.96); }
+.tab svg { width: 22px; height: 22px; stroke: currentColor; }
+.tab span {
+  font-family: var(--serif-en);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+}
+.tab.active { color: var(--sage-deep); }
+.tab.active .dot {
+  width: 3.5px; height: 3.5px; border-radius: 50%;
+  background: var(--sage-deep);
+}
+.tab .dot { width: 3.5px; height: 3.5px; }
+
+/* 重播开场 */
+.replay {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  z-index: 9;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--paper-edge);
+  background: var(--warm-white);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--paper-shadow);
+  transition: transform 120ms var(--ease-out);
+}
+.replay:active { transform: scale(0.96) rotate(-30deg); }
+.replay svg { width: 15px; height: 15px; stroke: currentColor; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #opening, #angelMedallion, #haloSvg .stem, #waxSeal, .opening-title,
+  .reveal, .entry, .tab {
+    transition-duration: 0.01ms !important;
+  }
+}
