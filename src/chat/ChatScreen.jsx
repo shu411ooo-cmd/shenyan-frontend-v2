@@ -317,7 +317,15 @@ export default function ChatScreen({ onBack }) {
       const res = await fetch(`${API_BASE}/sessions/${sid}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text || "", stream: true, image: pendingImage || undefined }),
+        body: JSON.stringify({
+          message: text || "",
+          stream: true,
+          image: pendingImage || undefined,
+          model: sessionSettings.model,
+          thinking: sessionSettings.thinking,
+          memory: sessionSettings.memory,
+          tools: sessionSettings.tools,
+        }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -328,6 +336,7 @@ export default function ChatScreen({ onBack }) {
       let sentenceBuf = "";
       let aiMsgIdx = 0;
       let toolCallSeen = false;
+      let thinkingBuf = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -344,6 +353,27 @@ export default function ChatScreen({ onBack }) {
           let parsed;
           try { parsed = JSON.parse(trimmed.slice(6)); } catch (e) { continue; }
           if (!parsed) continue;
+
+          // thinking —— 模型思考链，可展开查看
+          if (parsed.thought) {
+            thinkingBuf += parsed.thought;
+            setTyping(true);
+            setMessages((ms) => {
+              const last = ms[ms.length - 1];
+              if (last && last.type === "thinking" && last.id === ("th" + seed)) {
+                return ms.map((m, i) =>
+                  i === ms.length - 1 ? { ...m, text: thinkingBuf } : m
+                );
+              }
+              return [...ms, {
+                id: "th" + seed,
+                type: "thinking",
+                seed,
+                text: thinkingBuf,
+                duration: 0,
+              }];
+            });
+          }
 
           // tool_call: { id, name, arguments }
           if (parsed.name && parsed.arguments && parsed.success === undefined) {
@@ -506,7 +536,7 @@ export default function ChatScreen({ onBack }) {
     }
 
     if (m.type === "thinking") {
-      renderedMessages.push(<ThinkingNote key={m.id} seed={m.seed} duration={m.duration} />);
+      renderedMessages.push(<ThinkingNote key={m.id} seed={m.seed} duration={m.duration} text={m.text} />);
     } else if (m.type === "tool") {
       renderedMessages.push(
         <ToolCallNote key={m.id} seed={m.seed} tools={m.tools} duration={m.duration} status={m.status} />

@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { IconQuill, IconChevronRight } from "./ChatIcons.jsx";
 
 /* ------------------------------------------------------------
    ThinkingNote —— 页边思考痕迹
-   英文短句 + Cormorant 斜体，像信纸上的铅笔小字
-   左侧金色细线，可展开
+   真实的模型思考链内容，默认收起为一行铅笔小字，
+   点击展开查看他在想什么。
    ------------------------------------------------------------ */
 
 const THINKING_TITLES = [
@@ -23,25 +23,27 @@ const THINKING_DETAILS = [
   "turning the memory over gently…",
 ];
 
-export default function ThinkingNote({ seed, duration = 3 }) {
-  const [expanded, setExpanded] = useState(false);
+function hashOf(seed) {
+  let h = 0;
+  const s = String(seed);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
 
-  const { title, detail } = useMemo(() => {
-    let h = 0;
-    const s = String(seed);
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return {
-      title: THINKING_TITLES[h % THINKING_TITLES.length],
-      detail: THINKING_DETAILS[(h >> 8) % THINKING_DETAILS.length],
-    };
-  }, [seed]);
+export default function ThinkingNote({ seed, duration = 0, text = "" }) {
+  const [expanded, setExpanded] = useState(false);
+  const h = hashOf(seed);
+  const title = THINKING_TITLES[h % THINKING_TITLES.length];
+  const fallback = THINKING_DETAILS[(h >> 8) % THINKING_DETAILS.length];
+  const hasContent = !!text && text.trim().length > 0;
+  const body = hasContent ? text.trim() : fallback;
 
   return (
     <div style={{
       alignSelf: "flex-start",
       width: "100%",
       maxWidth: "86%",
-      margin: "0 0 18px 2px",
+      margin: "0 0 14px 2px",
       paddingLeft: 14,
       borderLeft: "1px solid var(--gold-light)",
       position: "relative",
@@ -69,6 +71,7 @@ export default function ThinkingNote({ seed, duration = 3 }) {
           background: "transparent",
           cursor: "pointer",
           padding: 0,
+          maxWidth: "100%",
         }}
       >
         <IconQuill size={13} />
@@ -88,7 +91,7 @@ export default function ThinkingNote({ seed, duration = 3 }) {
           opacity: 0.55,
           letterSpacing: "0.06em",
         }}>
-          · {duration}s
+          {duration > 0 ? `· ${duration}s` : hasContent ? "· 展开" : ""}
         </span>
         <IconChevronRight size={11} style={{
           transform: expanded ? "rotate(90deg)" : "none",
@@ -99,16 +102,18 @@ export default function ThinkingNote({ seed, duration = 3 }) {
 
       {expanded && (
         <div style={{
-          marginTop: 5,
+          marginTop: 7,
           marginLeft: 20,
           fontFamily: "var(--font-italic-en)",
           fontStyle: "italic",
           fontSize: 13.5,
           color: "var(--ink-soft)",
-          opacity: 0.75,
+          opacity: 0.8,
+          lineHeight: 1.7,
+          whiteSpace: "pre-wrap",
           animation: "pageIn 200ms var(--ease-out) both",
         }}>
-          {detail}
+          {body}
         </div>
       )}
     </div>
