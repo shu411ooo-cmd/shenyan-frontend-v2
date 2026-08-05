@@ -325,8 +325,8 @@ export default function ChatScreen({ onBack }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let sentenceBuf = "";
-      let aiMsgIdx = 0;
+      const mainAiId = "a" + seed;
+      let aiContent = "";
       let toolCallSeen = false;
 
       while (true) {
@@ -365,56 +365,27 @@ export default function ChatScreen({ onBack }) {
             ));
           }
 
-          // text chunk —— 按句子拆分，一句一条消息
+          // text chunk —— 先聚合成一条消息，流结束时再按句子拆分
           if (parsed.text) {
             setTyping(false);
-            sentenceBuf += parsed.text;
+            aiContent += parsed.text;
 
-            // 抽出所有完整句子
-            const complete = [];
-            let rem = sentenceBuf;
-            let ext;
-            while ((ext = extractNextSentence(rem)) !== null) {
-              complete.push(ext);
-              rem = rem.slice(ext.length);
-            }
-            sentenceBuf = rem;
-
-            if (complete.length > 0 || sentenceBuf.trim()) {
-              setMessages((ms) => {
-                let next = [...ms];
-                for (const sent of complete) {
-                  next = [...next, {
-                    id: "a" + seed + "-" + (aiMsgIdx++),
-                    from: "ai",
-                    text: sent.trim(),
-                    time: nowTimeLabel(),
-                    ts: Date.now(),
-                    appear: true,
-                  }];
-                }
-                // 残句：显示为"正在写"的最后一条
-                if (sentenceBuf.trim()) {
-                  const pendId = "a" + seed + "-pending";
-                  const last = next[next.length - 1];
-                  if (last && last.id === pendId) {
-                    next = next.map((m, i) =>
-                      i === next.length - 1 ? { ...m, text: sentenceBuf.trim() } : m
-                    );
-                  } else {
-                    next = [...next, {
-                      id: pendId,
-                      from: "ai",
-                      text: sentenceBuf.trim(),
-                      time: nowTimeLabel(),
-                      ts: Date.now(),
-                      appear: true,
-                    }];
-                  }
-                }
-                return next;
-              });
-            }
+            setMessages((ms) => {
+              const last = ms[ms.length - 1];
+              if (last && last.id === mainAiId && last.from === "ai") {
+                return ms.map((m, i) =>
+                  i === ms.length - 1 ? { ...m, text: aiContent } : m
+                );
+              }
+              return [...ms, {
+                id: mainAiId,
+                from: "ai",
+                text: aiContent,
+                time: nowTimeLabel(),
+                ts: Date.now(),
+                appear: true,
+              }];
+            });
           }
 
           // done: { reply, sessionId }
@@ -424,14 +395,31 @@ export default function ChatScreen({ onBack }) {
         }
       }
 
-      // 流结束 —— 残句转正
-      if (sentenceBuf.trim()) {
-        setMessages((ms) => {
-          const pendId = "a" + seed + "-pending";
-          return ms.map((m) =>
-            m.id === pendId ? { ...m, id: "a" + seed + "-" + aiMsgIdx } : m
-          );
-        });
+      // 流结束 —— 把累积文本按句子拆成多条消息
+      if (aiContent.trim()) {
+        const parts = [];
+        let rem = aiContent;
+        let ext;
+        while ((ext = extractNextSentence(rem)) !== null) {
+          parts.push(ext.trim());
+          rem = rem.slice(ext.length);
+        }
+        if (rem.trim()) parts.push(rem.trim());
+
+        if (parts.length > 1) {
+          setMessages((ms) => {
+            const withoutMain = ms.filter((m) => m.id !== mainAiId);
+            const sentences = parts.map((text, i) => ({
+              id: mainAiId + "-" + i,
+              from: "ai",
+              text,
+              time: nowTimeLabel(),
+              ts: Date.now(),
+              appear: true,
+            }));
+            return [...withoutMain, ...sentences];
+          });
+        }
       }
 
       setTyping(false);
