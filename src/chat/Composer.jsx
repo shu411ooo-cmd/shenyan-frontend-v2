@@ -22,13 +22,13 @@ export default function Composer({ draft, setDraft, onSend, inputRef }) {
   return (
     <div style={{
       position: "relative", zIndex: 6, flexShrink: 0,
-      padding: "10px 14px 24px",
+      padding: "8px 10px 16px",
       background: "linear-gradient(to top, var(--ivory) 78%, rgba(247,242,233,0))",
-      display: "flex", alignItems: "flex-end", gap: 10,
+      display: "flex", alignItems: "flex-end", gap: 8,
     }}>
       {/* 附件 */}
       <button aria-label="附件" className="pressable" style={{
-        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
         ...border.hairline, background: "var(--warm-white)",
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
       }}>
@@ -48,25 +48,25 @@ export default function Composer({ draft, setDraft, onSend, inputRef }) {
         style={{
           flex: 1, resize: "none",
           ...border.hairline,
-          borderRadius: 12,
+          borderRadius: 10,
           background: "var(--warm-white)",
-          boxShadow: "inset 0 2px 6px rgba(90,78,60,0.05), 0 2px 6px rgba(90,78,60,0.04)",
-          padding: "11px 14px", fontSize: 14.5, lineHeight: 1.7,
+          boxShadow: "inset 0 1px 4px rgba(90,78,60,0.04)",
+          padding: "8px 11px", fontSize: 13.5, lineHeight: 1.6,
           fontFamily: "var(--serif-body)", color: "var(--ink)",
-          outline: "none", maxHeight: 96, overflowY: "auto",
+          outline: "none", maxHeight: 88, overflowY: "auto",
         }}
         onInput={(e) => {
           e.target.style.height = "auto";
-          e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px";
+          e.target.style.height = Math.min(e.target.scrollHeight, 88) + "px";
         }}
       />
 
       {/* 发送：羽毛笔 */}
       <button onClick={onSend} aria-label="发送" className="pressable" style={{
-        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
         ...border.hairline, background: "var(--warm-white)",
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-        boxShadow: "0 3px 10px rgba(90,78,60,0.08)",
+        boxShadow: "0 2px 8px rgba(90,78,60,0.06)",
       }}>
         <QuillIcon opacity={draft.trim() ? 0.85 : 0.3} />
       </button>

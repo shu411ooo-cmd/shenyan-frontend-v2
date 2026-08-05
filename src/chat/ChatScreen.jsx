@@ -83,11 +83,11 @@ function SunDial() {
         className="pressable"
         onClick={() => setOpen((v) => !v)}
         style={{
-          width: 32, height: 32, border: "none", background: "transparent",
+          width: 28, height: 28, border: "none", background: "transparent",
           display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
         }}
       >
-        <Icon size={20} />
+        <Icon size={17} />
       </button>
       {open && (
         <>
@@ -201,18 +201,28 @@ export default function ChatScreen({ onBack }) {
     memory: true,
     tools: "auto",
   });
-  const [companion, setCompanion] = useState({
-    name: COMPANION.name,
-    avatar: COMPANION.avatar,
-    alt: COMPANION.alt,
-    tagline: COMPANION.tagline || "the one who stays\nin this garden",
-    statusText: COMPANION.defaultStatus,
-    statusEdited: false,
-    writingStatus: COMPANION.writingStatus,
-    voice: "Warm / Quiet",
-    model: "Claude Sonnet 4.6",
-    connection: "Default garden route",
+  const [companion, setCompanion] = useState(() => {
+    try {
+      const saved = localStorage.getItem("garden-companion");
+      if (saved) return JSON.parse(saved);
+    } catch (e) { /* ignore */ }
+    return {
+      name: COMPANION.name,
+      avatar: COMPANION.avatar,
+      alt: COMPANION.alt,
+      tagline: COMPANION.tagline || "the one who stays\nin this garden",
+      statusText: COMPANION.defaultStatus,
+      statusEdited: false,
+      writingStatus: COMPANION.writingStatus,
+      voice: "Warm / Quiet",
+      model: "Claude Sonnet 4.6",
+      connection: "Default garden route",
+    };
   });
+
+  useEffect(() => {
+    try { localStorage.setItem("garden-companion", JSON.stringify(companion)); } catch (e) { /* ignore */ }
+  }, [companion]);
 
   const listRef = useRef(null);
   const inputRef = useRef(null);
@@ -497,30 +507,29 @@ export default function ChatScreen({ onBack }) {
 
       {/* Header */}
       <header style={{
-        position: "relative", zIndex: 6, height: 66, flexShrink: 0,
+        position: "relative", zIndex: 6, height: 48, flexShrink: 0,
         background: "var(--warm-white)",
         ...border.bottom,
-        boxShadow: "0 2px 10px rgba(90,78,60,0.06)",
-        display: "flex", alignItems: "center", padding: "0 14px", gap: 12,
+        display: "flex", alignItems: "center", padding: "0 8px 0 4px", gap: 8,
       }}>
         <BackButton onClick={onBack} />
 
         <button
           onClick={() => setCompanionOpen(true)}
           style={{
-            display: "flex", alignItems: "center", gap: 10, flex: 1,
+            display: "flex", alignItems: "center", gap: 8, flex: 1,
             border: "none", background: "transparent", cursor: "pointer", textAlign: "left",
             padding: 0,
           }}
         >
           <div className="relief-disc" style={{
-            width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+            width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
           }}>
             <img src={companion.avatar} alt={companion.alt} style={{ width: "100%", height: "100%", objectFit: "cover" }} draggable="false" />
           </div>
           <div>
-            <div className="f-display" style={{ fontSize: 15, fontWeight: 500, letterSpacing: "0.03em" }}>{companion.name}</div>
-            <div style={{ fontSize: 10.5, color: "var(--accent-deep)", letterSpacing: "0.08em", marginTop: 1 }}>
+            <div className="f-display" style={{ fontSize: 14, fontWeight: 500, letterSpacing: "0.03em" }}>{companion.name}</div>
+            <div style={{ fontSize: 9.5, color: "var(--accent-deep)", letterSpacing: "0.06em", marginTop: 1 }}>
               {typing ? companion.writingStatus : (companion.statusEdited ? companion.statusText : companionSeasonStatus(effectiveSeason))}
             </div>
           </div>
@@ -531,11 +540,11 @@ export default function ChatScreen({ onBack }) {
           className="pressable"
           onClick={() => setGardenOpen((v) => !v)}
           style={{
-            width: 32, height: 32, border: "none", background: "transparent",
+            width: 28, height: 28, border: "none", background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
           }}
         >
-          <IconLeaf size={20} />
+          <IconLeaf size={17} />
         </button>
         <SunDial />
       </header>
