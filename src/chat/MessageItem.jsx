@@ -135,6 +135,12 @@ export default function MessageItem({
           transition: "opacity 200ms",
         }}
       >
+        {msg.image && (
+          <img src={msg.image} alt="" style={{
+            maxWidth: 200, maxHeight: 200, borderRadius: 6,
+            marginBottom: msg.text ? 6 : 0, display: "block",
+          }} />
+        )}
         {msg.text}
         {selectMode ? (
           <SelectCheck selected={selected} />

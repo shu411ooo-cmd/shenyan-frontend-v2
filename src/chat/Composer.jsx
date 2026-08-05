@@ -18,16 +18,39 @@ function QuillIcon({ color = "var(--ink)", opacity = 1 }) {
   );
 }
 
-export default function Composer({ draft, setDraft, onSend, inputRef }) {
+export default function Composer({ draft, setDraft, onSend, inputRef, pendingImage, setPendingImage, onAttach }) {
   return (
     <div style={{
       position: "relative", zIndex: 6, flexShrink: 0,
       padding: "8px 10px 16px",
       background: "linear-gradient(to top, var(--ivory) 78%, rgba(247,242,233,0))",
-      display: "flex", alignItems: "flex-end", gap: 8,
+      display: "flex", flexDirection: "column",
     }}>
+      {/* 图片预览 */}
+      {pendingImage && (
+        <div style={{
+          position: "relative", alignSelf: "flex-start", marginBottom: 6, marginLeft: 4,
+        }}>
+          <img src={pendingImage} alt="" style={{
+            maxWidth: 120, maxHeight: 120, borderRadius: 8,
+            border: "1px solid var(--paper-edge)", objectFit: "cover",
+          }} />
+          <button
+            onClick={() => setPendingImage(null)}
+            style={{
+              position: "absolute", top: -6, right: -6,
+              width: 18, height: 18, borderRadius: "50%",
+              border: "none", background: "var(--ink-soft)", color: "#fff",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, lineHeight: 1,
+            }}
+          >✕</button>
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
       {/* 附件 */}
-      <button aria-label="附件" className="pressable" style={{
+      <button aria-label="附件" className="pressable" onClick={onAttach} style={{
         width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
         ...border.hairline, background: "var(--warm-white)",
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
@@ -68,8 +91,9 @@ export default function Composer({ draft, setDraft, onSend, inputRef }) {
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
         boxShadow: "0 2px 8px rgba(90,78,60,0.06)",
       }}>
-        <QuillIcon opacity={draft.trim() ? 0.85 : 0.3} />
+        <QuillIcon opacity={draft.trim() || pendingImage ? 0.85 : 0.3} />
       </button>
+      </div>
     </div>
   );
 }

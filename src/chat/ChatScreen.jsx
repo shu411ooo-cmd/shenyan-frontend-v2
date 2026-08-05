@@ -11,7 +11,6 @@ import { useGarden } from "../state/GardenSettings.jsx";
 import { border } from "../styles/garden.js";
 import {
   COMPANION,
-  SEED_MESSAGES,
 } from "./chat-config.js";
 import { API_BASE } from "../config.js";
 import {
@@ -178,9 +177,10 @@ export default function ChatScreen({ onBack }) {
     try {
       const raw = localStorage.getItem("garden-chat-messages");
       const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+      // 清除旧种子消息（m1/m2/m3）——这些是占位数据，不是真实对话
+      if (Array.isArray(parsed) && parsed.length && parsed[0]?.id !== "m1") return parsed;
     } catch (e) { /* ignore */ }
-    return SEED_MESSAGES;
+    return [];
   });
   const [typing, setTyping] = useState(false);
   const [kept, setKept] = useState(() => {
@@ -193,6 +193,8 @@ export default function ChatScreen({ onBack }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [draft, setDraft] = useState("");
+  const [pendingImage, setPendingImage] = useState(null);
+  const fileRef = useRef(null);
   const [gardenOpen, setGardenOpen] = useState(false);
   const [companionOpen, setCompanionOpen] = useState(false);
   const [sessionSettings, setSessionSettings] = useState({
@@ -233,6 +235,19 @@ export default function ChatScreen({ onBack }) {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  // 清除旧占位消息缓存（只执行一次）
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("garden-chat-messages");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length && parsed[0]?.id === "m1") {
+          localStorage.removeItem("garden-chat-messages");
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }, []);
+
   /* 聊天记录 + 收藏印记持久化：退出再进来，红印不消失 */
   useEffect(() => {
     try { localStorage.setItem("garden-chat-messages", JSON.stringify(messages)); } catch (e) { /* ignore */ }
@@ -246,14 +261,25 @@ export default function ChatScreen({ onBack }) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
 
+  function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPendingImage(reader.result);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
   async function send() {
     const text = draft.trim();
-    if (!text || typing) return;
+    if ((!text && !pendingImage) || typing) return;
     cancelSelect();
     const seed = Date.now();
-    const userMsg = { id: "u" + seed, from: "user", text, time: nowTimeLabel(), ts: seed, appear: true };
+    const userMsg = { id: "u" + seed, from: "user", text: text || "", time: nowTimeLabel(), ts: seed, appear: true };
+    if (pendingImage) userMsg.image = pendingImage;
     setMessages((ms) => [...ms, userMsg]);
     setDraft("");
+    setPendingImage(null);
     if (inputRef.current) inputRef.current.style.height = "auto";
     setGardenOpen(false);
     setTyping(true);
@@ -277,7 +303,7 @@ export default function ChatScreen({ onBack }) {
       const res = await fetch(`${API_BASE}/sessions/${sid}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, stream: true }),
+        body: JSON.stringify({ message: text || "", stream: true, image: pendingImage || undefined }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -507,7 +533,7 @@ export default function ChatScreen({ onBack }) {
 
       {/* Header */}
       <header style={{
-        position: "relative", zIndex: 6, height: 48, flexShrink: 0,
+        position: "relative", zIndex: 6, height: 54, flexShrink: 0,
         background: "var(--warm-white)",
         ...border.bottom,
         display: "flex", alignItems: "center", padding: "0 8px 0 4px", gap: 8,
@@ -626,7 +652,12 @@ export default function ChatScreen({ onBack }) {
       )}
 
       {/* 输入区 */}
-      <Composer draft={draft} setDraft={setDraft} onSend={send} inputRef={inputRef} />
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
+      <Composer
+        draft={draft} setDraft={setDraft} onSend={send} inputRef={inputRef}
+        pendingImage={pendingImage} setPendingImage={setPendingImage}
+        onAttach={() => fileRef.current?.click()}
+      />
     </div>
   );
 }
