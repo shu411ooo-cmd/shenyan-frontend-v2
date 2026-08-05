@@ -112,7 +112,7 @@ export default function MessageItem({
         display: "flex",
         flexDirection: "column",
         alignItems: isAI ? "flex-start" : "flex-end",
-        marginBottom: 10,
+        marginBottom: 8,
       }}
     >
       <div
@@ -123,10 +123,10 @@ export default function MessageItem({
           maxWidth: "75%",
           background: isAI ? "#FCF9F1" : "var(--oatmeal)",
           borderRadius: isAI ? "4px 14px 14px 14px" : "14px 4px 14px 14px",
-          padding: "9px 13px",
+          padding: "7px 11px",
           boxShadow: "0 1px 4px rgba(90,78,60,0.05)",
-          fontSize: 14,
-          lineHeight: 1.75,
+          fontSize: 13,
+          lineHeight: 1.6,
           color: "var(--ink)",
           fontFamily: "var(--serif-body)",
           whiteSpace: "pre-line",

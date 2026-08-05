@@ -154,8 +154,9 @@ function TimeGapDivider({ label }) {
         width: 3.5, height: 3.5, borderRadius: "50%",
         background: "var(--gold)", opacity: 0.55,
       }} />
-      <span className="f-hand-en" style={{
-        fontSize: 15, color: "var(--ink-soft)", opacity: 0.65,
+      <span style={{
+        fontSize: 12, color: "var(--ink-soft)", opacity: 0.85,
+        fontFamily: "var(--serif-en)", letterSpacing: "0.04em",
       }}>
         {label}
       </span>
