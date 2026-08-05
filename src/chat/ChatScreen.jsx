@@ -325,8 +325,8 @@ export default function ChatScreen({ onBack }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      const mainAiId = "a" + seed;
-      let aiContent = "";
+      let sentenceBuf = "";
+      let aiMsgIdx = 0;
       let toolCallSeen = false;
 
       while (true) {
@@ -365,26 +365,47 @@ export default function ChatScreen({ onBack }) {
             ));
           }
 
-          // text chunk —— 先聚合成一条消息，流结束时再按句子拆分
+          // text chunk —— 实时拆句：完整句子立即独立显示，残句流式增长
           if (parsed.text) {
             setTyping(false);
-            aiContent += parsed.text;
+            sentenceBuf += parsed.text;
+
+            const complete = [];
+            let rem = sentenceBuf;
+            let ext;
+            while ((ext = extractNextSentence(rem)) !== null) {
+              complete.push(ext.trim());
+              rem = rem.slice(ext.length);
+            }
+            sentenceBuf = rem;
 
             setMessages((ms) => {
-              const last = ms[ms.length - 1];
-              if (last && last.id === mainAiId && last.from === "ai") {
-                return ms.map((m, i) =>
-                  i === ms.length - 1 ? { ...m, text: aiContent } : m
-                );
+              // 去掉本轮流式消息，保留已完成的句子
+              let next = ms.filter((m) =>
+                !(m.from === "ai" && m.id.startsWith("a" + seed) && m._stream)
+              );
+              for (const sent of complete) {
+                next = [...next, {
+                  id: "a" + seed + "-" + (aiMsgIdx++),
+                  from: "ai",
+                  text: sent,
+                  time: nowTimeLabel(),
+                  ts: Date.now(),
+                  appear: true,
+                }];
               }
-              return [...ms, {
-                id: mainAiId,
-                from: "ai",
-                text: aiContent,
-                time: nowTimeLabel(),
-                ts: Date.now(),
-                appear: true,
-              }];
+              if (sentenceBuf.trim()) {
+                next = [...next, {
+                  id: "a" + seed + "-stream",
+                  from: "ai",
+                  text: sentenceBuf.trim(),
+                  time: nowTimeLabel(),
+                  ts: Date.now(),
+                  appear: true,
+                  _stream: true,
+                }];
+              }
+              return next;
             });
           }
 
@@ -395,32 +416,15 @@ export default function ChatScreen({ onBack }) {
         }
       }
 
-      // 流结束 —— 把累积文本按句子拆成多条消息
-      if (aiContent.trim()) {
-        const parts = [];
-        let rem = aiContent;
-        let ext;
-        while ((ext = extractNextSentence(rem)) !== null) {
-          parts.push(ext.trim());
-          rem = rem.slice(ext.length);
-        }
-        if (rem.trim()) parts.push(rem.trim());
-
-        if (parts.length > 1) {
-          setMessages((ms) => {
-            const withoutMain = ms.filter((m) => m.id !== mainAiId);
-            const sentences = parts.map((text, i) => ({
-              id: mainAiId + "-" + i,
-              from: "ai",
-              text,
-              time: nowTimeLabel(),
-              ts: Date.now(),
-              appear: true,
-            }));
-            return [...withoutMain, ...sentences];
-          });
-        }
-      }
+      // 流结束 —— 残句转正
+      setMessages((ms) => {
+        const streamId = "a" + seed + "-stream";
+        return ms.map((m) =>
+          m.id === streamId
+            ? { ...m, id: "a" + seed + "-" + aiMsgIdx, _stream: undefined }
+            : m
+        );
+      });
 
       setTyping(false);
 
