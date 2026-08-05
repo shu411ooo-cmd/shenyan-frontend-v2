@@ -215,7 +215,9 @@ export default function ChatScreen({ onBack }) {
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const timers = useRef([]);
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(() => {
+    try { return localStorage.getItem("garden-chat-sid"); } catch (e) { return null; }
+  });
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -245,17 +247,28 @@ export default function ChatScreen({ onBack }) {
     setTyping(true);
 
     try {
-      const res = await fetch(API_BASE + "/api/chat", {
+      // 确保有会话 ID（没有则先创建）
+      let sid = sessionId;
+      if (!sid) {
+        const sRes = await fetch(API_BASE + "/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: text.slice(0, 30) || "新对话" }),
+        });
+        if (!sRes.ok) throw new Error(`Create session HTTP ${sRes.status}`);
+        const sData = await sRes.json();
+        sid = sData.id;
+        setSessionId(sid);
+        try { localStorage.setItem("garden-chat-sid", sid); } catch (e) { /* ignore */ }
+      }
+
+      const res = await fetch(`${API_BASE}/sessions/${sid}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, sessionId, stream: true }),
+        body: JSON.stringify({ message: text, stream: true }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      // 从响应头获取 sessionId（如果还没有的话）
-      const newSid = res.headers.get("X-Session-Id");
-      if (newSid && !sessionId) setSessionId(newSid);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -329,7 +342,6 @@ export default function ChatScreen({ onBack }) {
         }
       }
 
-      // 流结束，更新会话时间
       setTyping(false);
 
     } catch (err) {
