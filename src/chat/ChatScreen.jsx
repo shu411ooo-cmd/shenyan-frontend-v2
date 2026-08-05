@@ -177,8 +177,12 @@ export default function ChatScreen({ onBack }) {
     try {
       const raw = localStorage.getItem("garden-chat-messages");
       const parsed = raw ? JSON.parse(raw) : null;
-      // 清除旧种子消息（m1/m2/m3）——这些是占位数据，不是真实对话
-      if (Array.isArray(parsed) && parsed.length && parsed[0]?.id !== "m1") return parsed;
+      // 只清掉纯种子数据（恰好 3 条且全是 m1/m2/m3），有真实消息就保留
+      if (Array.isArray(parsed) && parsed.length) {
+        const ids = parsed.map(m => m.id);
+        const isOnlySeeds = ids.length === 3 && ids[0] === "m1" && ids[1] === "m2" && ids[2] === "m3";
+        if (!isOnlySeeds) return parsed;
+      }
     } catch (e) { /* ignore */ }
     return [];
   });
@@ -235,18 +239,28 @@ export default function ChatScreen({ onBack }) {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // 清除旧占位消息缓存（只执行一次）
+  // 如果本地消息被清空但有 session，从后端恢复
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("garden-chat-messages");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length && parsed[0]?.id === "m1") {
-          localStorage.removeItem("garden-chat-messages");
-        }
-      }
-    } catch (e) { /* ignore */ }
-  }, []);
+    const sid = sessionId;
+    if (!sid || messages.length > 0) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/sessions/${sid}/messages`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled || !Array.isArray(data) || !data.length) return;
+        const restored = data.map(m => ({
+          id: "b" + m.id,
+          from: m.role === "user" ? "user" : "ai",
+          text: m.content || "",
+          time: m.created_at ? new Date(m.created_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "",
+          ts: new Date(m.created_at).getTime(),
+          appear: true,
+        }));
+        setMessages(restored);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   /* 聊天记录 + 收藏印记持久化：退出再进来，红印不消失 */
   useEffect(() => {

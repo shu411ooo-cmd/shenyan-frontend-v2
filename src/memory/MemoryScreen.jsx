@@ -344,7 +344,7 @@ export default function MemoryScreen({ onNavigate }) {
     }}>
       <div style={{
         flex: 1, overflowY: "auto", scrollbarWidth: "none",
-        padding: "30px 26px 120px", position: "relative", zIndex: 4,
+        padding: "30px 26px 96px", position: "relative", zIndex: 4,
       }}>
         {/* Header */}
         <header>

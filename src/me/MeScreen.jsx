@@ -261,7 +261,7 @@ export default function MeScreen({ onNavigate }) {
 
   return (
     <>
-      <PageShell vignette decor={false} padding="30px 22px 120px" zIndex={8}>
+      <PageShell vignette decor={false} padding="30px 22px 96px" zIndex={8}>
         <header style={{ position: "relative", marginBottom: 6 }}>
           <div style={{
             position: "absolute", top: -30, left: -22, right: -22, height: 160,

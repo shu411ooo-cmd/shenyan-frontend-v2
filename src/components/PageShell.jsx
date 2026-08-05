@@ -13,7 +13,7 @@ export default function PageShell({
   footer = null,
   decor = true,
   vignette = true,
-  padding = "24px 20px 120px",
+  padding = "24px 20px 96px",
   zIndex = 8,
 }) {
   return (

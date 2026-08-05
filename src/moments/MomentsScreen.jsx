@@ -623,7 +623,7 @@ export default function MomentsScreen({ onNavigate }) {
 
   return (
     <>
-      <PageShell padding="24px 20px 120px">
+      <PageShell padding="24px 20px 96px">
       {decor && <CornerSprayTL />}
       {decor && <CornerSprayBR />}
 
