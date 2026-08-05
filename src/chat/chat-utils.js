@@ -78,6 +78,6 @@ export function buildUnits(text) {
    接收 token 流，每次抽出一个完整句子。
    剩余的残缺片段留在 buffer 里继续累积。 */
 export function extractNextSentence(buf) {
-  const m = buf.match(/^[^。！？!?.]+[。！？!?.]+/);
+  const m = buf.match(/^[^。！？!?.…~\n]+(?:[。！？!?.…~]|\n\n)+/);
   return m ? m[0] : null;
 }

@@ -19,6 +19,7 @@ import {
   todayChapterLabel,
   marginNoteOfToday,
   companionSeasonStatus,
+  extractNextSentence,
 } from "./chat-utils.js";
 
 import CompanionDrawer from "./CompanionDrawer.jsx";
@@ -273,7 +274,8 @@ export default function ChatScreen({ onBack }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let fullReply = "";
+      let sentenceBuf = "";
+      let aiMsgIdx = 0;
       let toolCallSeen = false;
 
       while (true) {
@@ -312,27 +314,56 @@ export default function ChatScreen({ onBack }) {
             ));
           }
 
-          // text chunk
+          // text chunk —— 按句子拆分，一句一条消息
           if (parsed.text) {
-            fullReply += parsed.text;
             setTyping(false);
+            sentenceBuf += parsed.text;
 
-            setMessages((ms) => {
-              const last = ms[ms.length - 1];
-              if (last && last.id === ("a" + seed) && last.from === "ai") {
-                return ms.map((m, i) =>
-                  i === ms.length - 1 ? { ...m, text: m.text + parsed.text } : m
-                );
-              }
-              return [...ms, {
-                id: "a" + seed,
-                from: "ai",
-                text: parsed.text,
-                time: nowTimeLabel(),
-                ts: Date.now(),
-                appear: true,
-              }];
-            });
+            // 抽出所有完整句子
+            const complete = [];
+            let rem = sentenceBuf;
+            let ext;
+            while ((ext = extractNextSentence(rem)) !== null) {
+              complete.push(ext);
+              rem = rem.slice(ext.length);
+            }
+            sentenceBuf = rem;
+
+            if (complete.length > 0 || sentenceBuf.trim()) {
+              setMessages((ms) => {
+                let next = [...ms];
+                for (const sent of complete) {
+                  next = [...next, {
+                    id: "a" + seed + "-" + (aiMsgIdx++),
+                    from: "ai",
+                    text: sent.trim(),
+                    time: nowTimeLabel(),
+                    ts: Date.now(),
+                    appear: true,
+                  }];
+                }
+                // 残句：显示为"正在写"的最后一条
+                if (sentenceBuf.trim()) {
+                  const pendId = "a" + seed + "-pending";
+                  const last = next[next.length - 1];
+                  if (last && last.id === pendId) {
+                    next = next.map((m, i) =>
+                      i === next.length - 1 ? { ...m, text: sentenceBuf.trim() } : m
+                    );
+                  } else {
+                    next = [...next, {
+                      id: pendId,
+                      from: "ai",
+                      text: sentenceBuf.trim(),
+                      time: nowTimeLabel(),
+                      ts: Date.now(),
+                      appear: true,
+                    }];
+                  }
+                }
+                return next;
+              });
+            }
           }
 
           // done: { reply, sessionId }
@@ -340,6 +371,16 @@ export default function ChatScreen({ onBack }) {
             if (parsed.sessionId && !sessionId) setSessionId(parsed.sessionId);
           }
         }
+      }
+
+      // 流结束 —— 残句转正
+      if (sentenceBuf.trim()) {
+        setMessages((ms) => {
+          const pendId = "a" + seed + "-pending";
+          return ms.map((m) =>
+            m.id === pendId ? { ...m, id: "a" + seed + "-" + aiMsgIdx } : m
+          );
+        });
       }
 
       setTyping(false);
