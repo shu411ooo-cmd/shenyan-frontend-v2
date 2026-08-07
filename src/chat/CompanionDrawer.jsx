@@ -117,9 +117,26 @@ export default function CompanionDrawer({ open, onClose, companion, setCompanion
   function handleAvatarFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setCompanion((c) => ({ ...c, avatar: url }));
-    closeSheet();
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // 压缩到 256px 再存 base64，避免 localStorage 超限、刷新不丢
+        const size = 256;
+        const scale = Math.min(size / img.width, size / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        setCompanion((c) => ({ ...c, avatar: dataUrl }));
+        closeSheet();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   if (!open) return null;
