@@ -332,11 +332,32 @@ export default function ChatScreen({ onBack }) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
 
-  function handleFile(e) {
+  /* 压缩图片：长边压到 maxSide，转 base64（发给 AI 前先瘦身） */
+  function compressImage(dataUrl, maxSide = 1280, quality = 0.85) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxSide / img.width, maxSide / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  async function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => setPendingImage(reader.result);
+    reader.onload = async () => {
+      const compressed = await compressImage(reader.result);
+      setPendingImage(compressed);
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
   }
