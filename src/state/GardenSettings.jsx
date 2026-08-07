@@ -92,6 +92,16 @@ export function GardenProvider({ children }) {
   const removeCollection = (id) =>
     setSettings((s) => ({ ...s, collections: s.collections.filter((c) => c.id !== id) }));
 
+  /* 从收藏集里剔除某些行（取消收藏某条消息时用）
+     keepLine: (line) => boolean，返回 true 的行保留 */
+  const pruneCollections = (keepLine) =>
+    setSettings((s) => ({
+      ...s,
+      collections: s.collections
+        .map((c) => ({ ...c, lines: c.lines.filter((l) => keepLine(l)) }))
+        .filter((c) => c.lines.length > 0),
+    }));
+
   /* 每天写的东西：纸条 / 照片 */
   const addDayNote = (dateKey, text, who = "user") => {
     const t = String(text).trim();
@@ -166,6 +176,7 @@ export function GardenProvider({ children }) {
     removeKeepsake,
     addCollection,
     removeCollection,
+    pruneCollections,
     addDayNote,
     addDayPhoto,
     setDayMood,

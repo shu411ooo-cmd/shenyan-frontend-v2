@@ -139,6 +139,35 @@ function ChapterDivider({ season = "summer" }) {
 }
 
 /* ------------------------------------------------------------
+   DateDivider —— 跨天时的日期分隔
+   细线 + 「8 月 6 日 · 星期四」，标出这段对话是哪一天
+   ------------------------------------------------------------ */
+function DateDivider({ ts }) {
+  const d = new Date(ts);
+  const weekday = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][d.getDay()];
+  const label = `${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      gap: 12, margin: "6px 0 18px",
+    }}>
+      <span style={{ flex: 1, height: 1, background: "var(--paper-edge)", opacity: 0.7 }} />
+      <span className="f-display" style={{
+        fontSize: 11.5, letterSpacing: "0.18em", color: "var(--ink-soft)",
+      }}>
+        {label}
+      </span>
+      <span className="f-hand-en" style={{
+        fontSize: 16, color: "var(--gold)", opacity: 0.7,
+      }}>
+        {weekday}
+      </span>
+      <span style={{ flex: 1, height: 1, background: "var(--paper-edge)", opacity: 0.7 }} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------
    TimeGapDivider —— 隔了一段时间再说话时的时间分隔
    细线 + 小圆点 + 花体时间，像书页间的时间戳
    ------------------------------------------------------------ */
@@ -172,7 +201,7 @@ function TimeGapDivider({ label }) {
    ChatScreen —— 书桌上的信
    ------------------------------------------------------------ */
 export default function ChatScreen({ onBack }) {
-  const { decor, effectiveSeason, keepsakes, addCollection } = useGarden();
+  const { decor, effectiveSeason, keepsakes, addCollection, pruneCollections } = useGarden();
   const [messages, setMessages] = useState(() => {
     try {
       const raw = localStorage.getItem("garden-chat-messages");
@@ -233,6 +262,34 @@ export default function ChatScreen({ onBack }) {
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const timers = useRef([]);
+  const aiSeq = useRef(0);      // AI 消息 id 递增器
+  const pendingSents = useRef(0); // 已调度还没出现的句子数
+
+  /* 把完整句子逐条延迟追加（每条间隔 ~300ms），并始终插到残句前面 */
+  function scheduleSents(seed, complete) {
+    for (const sent of complete) {
+      const order = pendingSents.current++;
+      timers.current.push(setTimeout(() => {
+        setMessages((ms) => {
+          const aiMsg = {
+            id: "a" + seed + "-" + (aiSeq.current++),
+            from: "ai",
+            text: sent,
+            time: nowTimeLabel(),
+            ts: Date.now(),
+            appear: true,
+          };
+          const streamId = "a" + seed + "-stream";
+          const streamIdx = ms.findIndex((m) => m.id === streamId);
+          if (streamIdx === -1) return [...ms, aiMsg];
+          const next = [...ms];
+          next.splice(streamIdx, 0, aiMsg);
+          return next;
+        });
+        pendingSents.current = Math.max(0, pendingSents.current - 1);
+      }, order * 300));
+    }
+  }
   const [sessionId, setSessionId] = useState(() => {
     try { return localStorage.getItem("garden-chat-sid"); } catch (e) { return null; }
   });
@@ -334,7 +391,6 @@ export default function ChatScreen({ onBack }) {
       const decoder = new TextDecoder();
       let buf = "";
       let sentenceBuf = "";
-      let aiMsgIdx = 0;
       let toolCallSeen = false;
       let thinkingBuf = "";
 
@@ -395,7 +451,7 @@ export default function ChatScreen({ onBack }) {
             ));
           }
 
-          // text chunk —— 实时拆句：完整句子立即独立显示，残句流式增长
+          // text chunk —— 完整句子逐条出现，残句流式增长
           if (parsed.text) {
             setTyping(false);
             sentenceBuf += parsed.text;
@@ -409,21 +465,14 @@ export default function ChatScreen({ onBack }) {
             }
             sentenceBuf = rem;
 
+            // 完整句子 → 逐句延迟追加（一条一条蹦出来）
+            if (complete.length) scheduleSents(seed, complete);
+
+            // 残句 → 即时更新，保留 id 让后续句子能插到它前面
             setMessages((ms) => {
-              // 去掉本轮流式消息，保留已完成的句子
               let next = ms.filter((m) =>
-                !(m.from === "ai" && m.id.startsWith("a" + seed) && m._stream)
+                !(m.from === "ai" && m.id === ("a" + seed + "-stream"))
               );
-              for (const sent of complete) {
-                next = [...next, {
-                  id: "a" + seed + "-" + (aiMsgIdx++),
-                  from: "ai",
-                  text: sent,
-                  time: nowTimeLabel(),
-                  ts: Date.now(),
-                  appear: true,
-                }];
-              }
               if (sentenceBuf.trim()) {
                 next = [...next, {
                   id: "a" + seed + "-stream",
@@ -446,15 +495,14 @@ export default function ChatScreen({ onBack }) {
         }
       }
 
-      // 流结束 —— 残句转正
-      setMessages((ms) => {
-        const streamId = "a" + seed + "-stream";
-        return ms.map((m) =>
-          m.id === streamId
-            ? { ...m, id: "a" + seed + "-" + aiMsgIdx, _stream: undefined }
+      // 流结束 —— 残句转正（保留 id，让后面待出的句子仍能插到它前面）
+      setMessages((ms) =>
+        ms.map((m) =>
+          m.id === ("a" + seed + "-stream")
+            ? { ...m, _stream: undefined }
             : m
-        );
-      });
+        )
+      );
 
       setTyping(false);
 
@@ -480,11 +528,21 @@ export default function ChatScreen({ onBack }) {
   }
 
   function keep(id) {
-    if (kept[id]) return;
     const m = messages.find((x) => x.id === id);
     if (!m || m.type) return;
-    setKept((k) => ({ ...k, [id]: true }));
-    saveCollection([{ who: m.from === "ai" ? "angel" : "user", text: m.text }]);
+    const who = m.from === "ai" ? "angel" : "user";
+    if (kept[id]) {
+      // 已收藏 → 取消：移除印记 + 从收藏集剔除该行
+      setKept((k) => {
+        const next = { ...k };
+        delete next[id];
+        return next;
+      });
+      pruneCollections((line) => !(line.msgId === id));
+    } else {
+      setKept((k) => ({ ...k, [id]: true }));
+      saveCollection([{ who, text: m.text, msgId: id }]);
+    }
   }
 
   /* 多选收藏 */
@@ -510,7 +568,7 @@ export default function ChatScreen({ onBack }) {
   function saveSelected() {
     const lines = messages
       .filter((m) => !m.type && selectedIds.has(m.id))
-      .map((m) => ({ who: m.from === "ai" ? "angel" : "user", text: m.text }));
+      .map((m) => ({ who: m.from === "ai" ? "angel" : "user", text: m.text, msgId: m.id }));
     if (!lines.length) return;
     saveCollection(lines);
     setKept((k) => {
@@ -524,6 +582,7 @@ export default function ChatScreen({ onBack }) {
   }
 
   /* 渲染消息列表：
+     - 跨天 → 日期分隔（8 月 6 日 · 星期四）
      - 相邻消息间隔超过 20 分钟 → 时间分隔
      - 同向连续消息 → 紧凑排列，时间戳只在最后一条显示 */
   const renderedMessages = [];
@@ -531,7 +590,15 @@ export default function ChatScreen({ onBack }) {
     const prev = messages[i - 1];
     const next = messages[i + 1];
 
-    if (m.ts && prev?.ts && m.ts - prev.ts > 20 * 60 * 1000) {
+    const curDay = m.ts ? new Date(m.ts).toDateString() : null;
+    const prevDay = prev?.ts ? new Date(prev.ts).toDateString() : null;
+    const isFirst = i === 0 && curDay;
+    const isNewDay = curDay && prevDay && curDay !== prevDay;
+
+    // 跨天（或第一条消息）→ 日期分隔
+    if (isFirst || isNewDay) {
+      renderedMessages.push(<DateDivider key={"date" + m.id} ts={m.ts} />);
+    } else if (m.ts && prev?.ts && m.ts - prev.ts > 20 * 60 * 1000) {
       renderedMessages.push(<TimeGapDivider key={"gap" + m.id} label={m.time} />);
     }
 

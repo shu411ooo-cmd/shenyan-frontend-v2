@@ -7,37 +7,15 @@ import React, { useRef } from "react";
    支持：单条收藏（AI 消息右下角）、长按多选收藏。
    ------------------------------------------------------------ */
 
-/* 收藏小圆点 / 已收藏勾 */
+/* 收藏小圆点 / 已收藏勾 —— 都是按钮，点了就收藏或取消 */
 function KeepDot({ kept, onKeep, selectMode }) {
   if (selectMode) return null;
-  if (kept) {
-    return (
-      <span className="keep-pop" style={{
-        position: "absolute",
-        bottom: -5,
-        right: -5,
-        width: 14,
-        height: 14,
-        borderRadius: "50%",
-        background: "var(--wax)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 1px 4px rgba(168,87,81,0.3)",
-        zIndex: 2,
-      }}>
-        <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-          <path d="M5 12l5 5L20 7" />
-        </svg>
-      </span>
-    );
-  }
-
   return (
     <button
       onClick={onKeep}
       className="pressable keep-btn"
-      aria-label="收藏"
+      aria-label={kept ? "取消收藏" : "收藏"}
+      title={kept ? "取消收藏" : "收藏"}
       style={{
         position: "absolute",
         bottom: -5,
@@ -46,14 +24,23 @@ function KeepDot({ kept, onKeep, selectMode }) {
         height: 14,
         borderRadius: "50%",
         border: "none",
-        background: "var(--warm-white)",
-        boxShadow: "0 1px 4px rgba(90,78,60,0.15)",
+        background: kept ? "var(--wax)" : "var(--warm-white)",
+        boxShadow: kept ? "0 1px 4px rgba(168,87,81,0.3)" : "0 1px 4px rgba(90,78,60,0.15)",
         cursor: "pointer",
-        opacity: 0,
-        transition: "opacity 200ms",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: kept ? 1 : 0,
+        transition: "opacity 200ms, background 200ms",
         zIndex: 2,
       }}
-    />
+    >
+      {kept && (
+        <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+          <path d="M5 12l5 5L20 7" />
+        </svg>
+      )}
+    </button>
   );
 }
 
