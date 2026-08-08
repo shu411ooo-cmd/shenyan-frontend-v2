@@ -72,6 +72,7 @@ export default function StatsScreen({ onBack }) {
     prompt: sum((r) => r.prompt_tokens),
     completion: sum((r) => r.completion_tokens),
     cached: sum((r) => r.cached_tokens),
+    cacheWrite: sum((r) => r.cache_write_tokens),
     cacheRead: sum((r) => r.cache_read_input_tokens),
     cacheCreate: sum((r) => r.cache_creation_input_tokens),
     est: sum((r) => r.estimated_tokens),
@@ -155,9 +156,9 @@ export default function StatsScreen({ onBack }) {
             { label: "请求", value: totals.count },
             { label: "prompt", value: totals.prompt },
             { label: "completion", value: totals.completion },
-            { label: "cached", value: totals.cached },
-            { label: "cache_read", value: totals.cacheRead },
-            { label: "cache_create", value: totals.cacheCreate },
+            { label: "cached·read", value: totals.cached },
+            { label: "cache·write", value: totals.cacheWrite },
+            { label: "cache·create", value: totals.cacheCreate },
           ].map((t) => (
             <div key={t.label} style={{
               background: "var(--warm-white)", ...{ border: "1px solid var(--paper-edge)" },
@@ -211,8 +212,22 @@ export default function StatsScreen({ onBack }) {
             ))}
           </div>
 
-          {/* 行 3：cache_read/creation + 估算差异 */}
+          {/* 行 3：三段视图 hit/write/uncached + 估算差异 */}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+            {r.prompt_tokens != null && (() => {
+              const read = r.cached_tokens || 0;
+              const write = r.cache_write_tokens || 0;
+              const uncached = (r.prompt_tokens || 0) - read - write;
+              return (
+                <span className="f-italic-en" style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>
+                  <span style={{ color: "#5B7A62" }}>hit {read.toLocaleString()}</span>
+                  {" · "}
+                  <span style={{ color: "#A0704A" }}>write {write.toLocaleString()}</span>
+                  {" · "}
+                  <span style={{ opacity: 0.7 }}>uncached {uncached.toLocaleString()}</span>
+                </span>
+              );
+            })()}
             {r.cache_read_input_tokens != null && (
               <span className="f-italic-en" style={{ fontSize: 10.5, color: "#5B7A62" }}>
                 read {r.cache_read_input_tokens.toLocaleString()}
