@@ -4,6 +4,7 @@ import Sheet, { SheetButton, SheetInput, SheetOption } from "../components/Sheet
 import PageShell from "../components/PageShell.jsx";
 import { useGarden } from "../state/GardenSettings.jsx";
 import { border } from "../styles/garden.js";
+import { API_BASE } from "../config.js";
 
 /* ------------------------------------------------------------
    Me —— 花园主人的房间
@@ -237,9 +238,41 @@ export default function MeScreen({ onNavigate }) {
   const [draft, setDraft] = useState("");
   const fileInput = useRef(null);
 
+  // Soul —— 系统提示词（他的灵魂）
+  const [promptText, setPromptText] = useState("");
+  const [promptSaving, setPromptSaving] = useState(false);
+  const [promptSaved, setPromptSaved] = useState(false);
+
   useEffect(() => {
     try { localStorage.setItem("garden-profile", JSON.stringify(profile)); } catch (e) { /* ignore */ }
   }, [profile]);
+
+  // 进入房间时读当前 system_prompt（数据库 → env → 默认）
+  useEffect(() => {
+    fetch(`${API_BASE}/api/system-prompt`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && typeof d.system_prompt === "string") setPromptText(d.system_prompt);
+      })
+      .catch(() => { /* 后端不可达时留空 */ });
+  }, []);
+
+  async function savePrompt() {
+    setPromptSaving(true);
+    try {
+      await fetch(`${API_BASE}/api/system-prompt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system_prompt: promptText.trim() })
+      });
+      setPromptSaved(true);
+      setTimeout(() => setPromptSaved(false), 2000);
+    } catch (e) {
+      console.error("保存 system_prompt 失败:", e);
+    } finally {
+      setPromptSaving(false);
+    }
+  }
 
   const open = (name) => setSheet(name);
   const close = () => { setSheet(null); setDraft(""); };
@@ -357,6 +390,57 @@ export default function MeScreen({ onNavigate }) {
           <Row icon="connection" label="Connections" value={CONNECTIONS.find((c) => c.id === companion.connection)?.label} onClick={() => open("connection")} />
         </div>
 
+        {/* Soul —— 他的灵魂：系统提示词 */}
+        <ZoneTitle decor={decor} deco={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" strokeWidth="1.4" strokeLinecap="round"
+        >
+          <path d="M12 3c-3.5 2.5-5.5 5-5.5 8a5.5 5.5 0 0 0 11 0c0-3-2-5.5-5.5-8Z" /><path d="M12 9.5v4M12 16.5v.5" />
+        </svg>}
+        >
+          Soul
+        </ZoneTitle>
+        <div className="f-hand-cn" style={{ fontSize: 13, color: "var(--ink-soft)", margin: "-2px 0 10px", lineHeight: 1.7 }}>
+          写下他是谁、他怎么说话。这里是他的灵魂，决定每一次对话的语气。
+        </div>
+        <div style={{
+          background: "linear-gradient(160deg, var(--warm-white), var(--ivory))",
+          ...border.hairline, borderRadius: 14,
+          padding: "4px 14px 14px", boxShadow: "0 4px 14px rgba(90,78,60,0.06)",
+        }}
+        >
+          <textarea
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            placeholder="留空 = 保持默认。写下一段话，他就会成为那样的人……"
+            rows={7}
+            style={{
+              width: "100%", border: "none", background: "transparent", resize: "vertical",
+              fontFamily: "var(--serif-body)", fontSize: 13.5, lineHeight: 1.7,
+              color: "var(--ink)", padding: "10px 2px 6px", outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 4 }}>
+            <span className="f-italic-en" style={{
+              fontSize: 11, color: "var(--sage-deep)", opacity: promptSaved ? 1 : 0,
+              transition: "opacity 300ms", fontStyle: "italic",
+            }}
+            >
+              saved
+            </span>
+            <button
+              onClick={savePrompt}
+              disabled={promptSaving}
+              className="pressable"
+              style={{
+                border: "none", background: "var(--accent)", color: "var(--warm-white)",
+                padding: "8px 20px", borderRadius: 999, fontSize: 12.5, cursor: "pointer",
+                fontFamily: "var(--serif-body)", opacity: promptSaving ? 0.6 : 1,
+              }}
+            >
+              {promptSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+
         {/* Advanced */}
         <ZoneTitle decor={decor} deco={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" strokeWidth="1.4" strokeLinecap="round"
         >
@@ -371,6 +455,8 @@ export default function MeScreen({ onNavigate }) {
           <Row icon="privacy" label="Privacy" onClick={() => open("privacy")} />
           <div style={{ height: 1, background: "var(--paper-edge)", opacity: 0.35, marginLeft: 30 }} />
           <Row icon="data" label="Data" value="v0.1" onClick={() => open("data")} />
+          <div style={{ height: 1, background: "var(--paper-edge)", opacity: 0.35, marginLeft: 30 }} />
+          <Row icon="privacy" label="Request Stats" value="usage" onClick={() => onNavigate("stats")} />
         </div>
 
         {decor && (

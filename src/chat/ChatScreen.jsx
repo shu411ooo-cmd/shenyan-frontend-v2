@@ -394,7 +394,7 @@ export default function ChatScreen({ onBack }) {
 
       const res = await fetch(`${API_BASE}/sessions/${sid}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-client": "angel" },
         body: JSON.stringify({
           message: text || "",
           stream: true,

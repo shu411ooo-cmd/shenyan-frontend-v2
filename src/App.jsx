@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import ChatScreen from "./chat/ChatScreen.jsx";
 import MemoryScreen from "./memory/MemoryScreen.jsx";
 import MeScreen from "./me/MeScreen.jsx";
+import StatsScreen from "./stats/StatsScreen.jsx";
 import MomentsScreen from "./moments/MomentsScreen.jsx";
 import MusicRoomScreen from "./music/MusicRoomScreen.jsx";
 import GardenAtmosphere from "./components/GardenAtmosphere.jsx";
@@ -345,7 +346,7 @@ function AppShell() {
     if (fb) fb.remove();
   }, []);
 
-  const showTab = page !== "chat" && page !== "musicroom";
+  const showTab = page !== "chat" && page !== "musicroom" && page !== "stats";
 
   return (
     <div className={`phone theme-${theme} type-${type} season-${effectiveSeason}`}>
@@ -366,6 +367,9 @@ function AppShell() {
       )}
       {page === "musicroom" && (
         <MusicRoomScreen onBack={() => setPage("home")} />
+      )}
+      {page === "stats" && (
+        <StatsScreen onBack={() => setPage("me")} />
       )}
       {showTab && <TabBar current={page} onNavigate={setPage} />}
       {decor && <Petals count={4} />}
